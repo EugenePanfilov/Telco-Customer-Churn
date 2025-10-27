@@ -1,3 +1,5 @@
+import os
+os.environ["MPLBACKEND"] = "Agg"   # безопасный headless-бэкенд
 import argparse, json, os, joblib, numpy as np
 from .data import read_dataset, maybe_parse_time
 from sklearn.metrics import classification_report, roc_auc_score, average_precision_score, log_loss, confusion_matrix
