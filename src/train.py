@@ -6,6 +6,8 @@ import os
 import json
 import joblib
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")  # безопасный бэкенд для headless-сред
 import matplotlib.pyplot as plt
 
 from sklearn.pipeline import Pipeline
