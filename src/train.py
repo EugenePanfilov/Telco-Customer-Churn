@@ -6,8 +6,10 @@ import os
 import json
 import joblib
 import numpy as np
+import os
+os.environ["MPLBACKEND"] = "Agg"   # переопределяем inline-бэкенд колаба
 import matplotlib
-matplotlib.use("Agg")  # безопасный бэкенд для headless-сред
+matplotlib.use("Agg")              # на всякий случай фиксируем
 import matplotlib.pyplot as plt
 
 from sklearn.pipeline import Pipeline
