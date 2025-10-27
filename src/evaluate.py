@@ -1,3 +1,19 @@
+# ── quiet mode & safe backend ────────────────────────────────────────────────
+import os, warnings
+os.environ["MPLBACKEND"] = "Agg"  # безопасный бэкенд без GUI
+
+from sklearn import set_config
+set_config(transform_output="pandas")  # чтобы трансформеры возвращали DataFrame
+
+from sklearn.exceptions import ConvergenceWarning, UndefinedMetricWarning, FitFailedWarning
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
+warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
+warnings.filterwarnings("ignore", category=FitFailedWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", message="X does not have valid feature names")
+# ─────────────────────────────────────────────────────────────────────────────
+
 import os
 os.environ["MPLBACKEND"] = "Agg"   # безопасный headless-бэкенд
 import argparse, json, os, joblib, numpy as np

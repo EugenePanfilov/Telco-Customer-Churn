@@ -1,6 +1,28 @@
 # src/train.py
 # 1) читаем конфиг -> 2) строим ColumnTransformer -> 3) KFold OOF -> 4) калибровка -> 5) save artifacts
 
+# ── quiet mode & safe backend ────────────────────────────────────────────────
+import os, warnings
+os.environ["MPLBACKEND"] = "Agg"  # без GUI/inline-бэкенда (Colab/сервер)
+
+# sklearn → всегда возвращает pandas с валидными именами фич
+from sklearn import set_config
+set_config(transform_output="pandas")
+
+# Точечное глушение частых ворнингов
+from sklearn.exceptions import ConvergenceWarning, UndefinedMetricWarning, FitFailedWarning
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
+warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
+warnings.filterwarnings("ignore", category=FitFailedWarning)
+
+# Убрать «X does not have valid feature names» (если где-то просочится numpy)
+warnings.filterwarnings("ignore", message="X does not have valid feature names")
+
+# Меньше шума от FutureWarning/UserWarning
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
+# ─────────────────────────────────────────────────────────────────────────────
+
 import argparse
 import os
 import json
