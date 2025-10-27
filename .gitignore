@@ -1,0 +1,51 @@
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+*.log
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+
+# Tests / coverage / linters
+.pytest_cache/
+.coverage*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# --- Project-specific ---
+# Artifacts produced by training/evaluation
+artifacts/
+
+# Local data (keep only placeholders/samples)
+data/*
+!data/.gitkeep
+!data/README.md
+!data/sample_*.csv
+
+# Configs cache (track actual yaml files)
+*.yaml~
+*.yml~
+
+# Env files
+.env
+.env.*

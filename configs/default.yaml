@@ -1,0 +1,42 @@
+data:
+  path_train: data/train.csv
+  path_test: null
+  target: "Churn"
+  time_col: null
+  group_col: null
+
+validation:
+  kind: "stratified_kfold"   # "group_kfold" | "time"
+  n_splits: 5
+  shuffle: true
+  random_state: 42
+
+metrics:
+  primary: "pr_auc"
+  secondary: ["roc_auc", "logloss"]
+  threshold_strategy: "f_beta"     # "cost"
+  fbeta: 2.0
+  cost_matrix: {fp: 1.0, fn: 5.0}
+  calibration: "platt"             # "platt" | "isotonic" | "none"
+
+model:
+  name: "lightgbm"                 # "logreg" | "catboost"
+  params:
+    n_estimators: 300
+    learning_rate: 0.05
+    num_leaves: 31
+
+preprocess:
+  # заполни эти списки своими колонками перед запуском
+  num_cols: ['tenure', 'MonthlyCharges', 'TotalCharges']
+  cat_cols: ['MultipleLines', 'InternetService', 'Contract', 'PaymentMethod', 'OnlineSecurity', 
+             'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies']
+  bin_cols: ['gender', 'SeniorCitizen', 'Partner', 'Dependents', 'PhoneService',
+             'PaperlessBilling']
+  numeric_imputer: "median"
+  scale_numeric: true
+  cat_imputer: "most_frequent"
+  cat_encoding: "onehot"           # "target"
+
+seed: 42
+artifacts_dir: "artifacts"
