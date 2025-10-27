@@ -3,8 +3,8 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.pkl
 *.log
+*.pkl
 
 # Virtual envs
 .venv/
@@ -33,19 +33,11 @@ htmlcov/
 Thumbs.db
 
 # --- Project-specific ---
-# Artifacts produced by training/evaluation
+# Artifacts
 artifacts/
 
-# Local data (keep only placeholders/samples)
+# Data: игнорируем всё, кроме явных файлов
 data/*
 !data/.gitkeep
 !data/README.md
-!data/sample_*.csv
-
-# Configs cache (track actual yaml files)
-*.yaml~
-*.yml~
-
-# Env files
-.env
-.env.*
+!data/train.csv
