@@ -1,3 +1,5 @@
+# src/evaluate.py
+
 # ── quiet mode & safe backend ────────────────────────────────────────────────
 import os, warnings
 os.environ["MPLBACKEND"] = "Agg"  # безопасный бэкенд без GUI
@@ -14,34 +16,62 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", message="X does not have valid feature names")
 # ─────────────────────────────────────────────────────────────────────────────
 
-import os
-os.environ["MPLBACKEND"] = "Agg"   # безопасный headless-бэкенд
-import argparse, json, os, joblib, numpy as np
+import argparse, json, joblib, numpy as np
 from .data import read_dataset, maybe_parse_time
-from sklearn.metrics import classification_report, roc_auc_score, average_precision_score, log_loss, confusion_matrix
+from sklearn.metrics import (
+    classification_report,
+    roc_auc_score,
+    average_precision_score,
+    log_loss,
+    confusion_matrix,
+)
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("--config", required=True); args = ap.parse_args()
-    import yaml; cfg = yaml.safe_load(open(args.config, "r", encoding="utf-8"))
-    bundle = joblib.load(os.path.join(cfg.get("artifacts_dir","artifacts"), "model.pkl"))
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--config", required=True)
+    args = ap.parse_args()
+
+    import yaml
+    with open(args.config, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+
+    art_root = cfg.get("artifacts_dir", "artifacts")
+
+    # Ищем model.pkl сначала в artifacts/latest, потом в корне artifacts/
+    candidates = [os.path.join(art_root, "latest"), art_root]
+    base_dir = None
+    for b in candidates:
+        if os.path.exists(os.path.join(b, "model.pkl")):
+            base_dir = b
+            break
+    if base_dir is None:
+        raise FileNotFoundError("model.pkl not found in artifacts/latest or artifacts/")
+
+    bundle = joblib.load(os.path.join(base_dir, "model.pkl"))
     model, thr = bundle["model"], float(bundle.get("threshold", 0.5))
 
     path = cfg["data"].get("path_test") or cfg["data"]["path_train"]
-    X, y = read_dataset(path, cfg["data"]["target"]); X = maybe_parse_time(X, cfg["data"].get("time_col"))
-    p = model.predict_proba(X)[:,1]; y_pred = (p >= thr).astype(int)
+    X, y = read_dataset(path, cfg["data"]["target"])
+    X = maybe_parse_time(X, cfg["data"].get("time_col"))
+
+    p = model.predict_proba(X)[:, 1]
+    y_pred = (p >= thr).astype(int)
 
     metrics = {
         "roc_auc": float(roc_auc_score(y, p)),
         "pr_auc": float(average_precision_score(y, p)),
-        "logloss": float(log_loss(y, np.clip(p, 1e-7, 1-1e-7))),
+        "logloss": float(log_loss(y, np.clip(p, 1e-7, 1 - 1e-7))),
         "confusion_matrix": confusion_matrix(y, y_pred).tolist(),
         "threshold_used": thr,
         "classification_report": classification_report(y, y_pred, output_dict=True),
         "data_path": path,
     }
-    out = os.path.join(cfg.get("artifacts_dir","artifacts"), "metrics_eval.json")
-    with open(out, "w", encoding="utf-8") as f: json.dump(metrics, f, ensure_ascii=False, indent=2)
+
+    out = os.path.join(base_dir, "metrics_eval.json")
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(metrics, f, ensure_ascii=False, indent=2)
     print("[OK] Evaluation metrics saved to", out)
+
 
 if __name__ == "__main__":
     main()
