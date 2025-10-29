@@ -63,6 +63,13 @@ def test_train_and_evaluate_end_to_end(tmp_path):
     for fn in ("model.pkl", "metrics.json", "calibration_plot.png"):
         assert (last / fn).exists(), f"{fn} отсутствует в {last}"
 
+    # Проверим структуру metrics.json (ужатая: before/after)
+    data = json.loads((last / "metrics.json").read_text(encoding="utf-8"))
+    assert "before" in data
+    for sect in ["before"] + (["after"] if "after" in data else []):
+        for k in ("roc_auc","pr_auc","logloss","f1","fbeta","cm","threshold","calibration"):
+            assert k in data[sect]
+
     # --- evaluate → пишет метрики рядом с моделью (latest) ---
     _run("src.evaluate", ["--config", str(cfg_path)])
     latest = art_dir / "latest"
@@ -70,9 +77,9 @@ def test_train_and_evaluate_end_to_end(tmp_path):
     out = base / "metrics_eval.json"
     assert out.exists(), "metrics_eval.json не записан"
 
-    data = json.loads(out.read_text(encoding="utf-8"))
-    for k in ("roc_auc", "pr_auc", "logloss", "threshold_used"):
-        assert k in data
+    e = json.loads(out.read_text(encoding="utf-8"))
+    for k in ("roc_auc","pr_auc","logloss","f1","fbeta","cm","threshold","calibration"):
+        assert k in e
 
 def test_random_model_sanity():
     # Санити: случайные предсказания → ROC-AUC≈0.5, PR-AUC≈base_rate

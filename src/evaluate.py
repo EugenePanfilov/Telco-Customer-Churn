@@ -5,7 +5,7 @@ import os, warnings
 os.environ["MPLBACKEND"] = "Agg"  # безопасный бэкенд без GUI
 
 from sklearn import set_config
-set_config(transform_output="pandas")  # чтобы трансформеры возвращали DataFrame
+set_config(transform_output="pandas")
 
 from sklearn.exceptions import ConvergenceWarning, UndefinedMetricWarning, FitFailedWarning
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
@@ -19,11 +19,12 @@ warnings.filterwarnings("ignore", message="X does not have valid feature names")
 import argparse, json, joblib, numpy as np
 from .data import read_dataset, maybe_parse_time
 from sklearn.metrics import (
-    classification_report,
     roc_auc_score,
     average_precision_score,
     log_loss,
     confusion_matrix,
+    f1_score,
+    fbeta_score,
 )
 
 def main():
@@ -54,22 +55,25 @@ def main():
     X, y = read_dataset(path, cfg["data"]["target"])
     X = maybe_parse_time(X, cfg["data"].get("time_col"))
 
+    beta = float(cfg.get("metrics", {}).get("fbeta", 2.0))
+
     p = model.predict_proba(X)[:, 1]
     y_pred = (p >= thr).astype(int)
 
-    metrics = {
+    metrics_slim = {
         "roc_auc": float(roc_auc_score(y, p)),
         "pr_auc": float(average_precision_score(y, p)),
         "logloss": float(log_loss(y, np.clip(p, 1e-7, 1 - 1e-7))),
-        "confusion_matrix": confusion_matrix(y, y_pred).tolist(),
-        "threshold_used": thr,
-        "classification_report": classification_report(y, y_pred, output_dict=True),
-        "data_path": path,
+        "f1": float(f1_score(y, y_pred)),
+        "fbeta": float(fbeta_score(y, y_pred, beta=beta)),
+        "cm": confusion_matrix(y, y_pred).tolist(),
+        "threshold": float(thr),
+        "calibration": "after",  # финальная модель уже с калибровкой, если она включена в train
     }
 
     out = os.path.join(base_dir, "metrics_eval.json")
     with open(out, "w", encoding="utf-8") as f:
-        json.dump(metrics, f, ensure_ascii=False, indent=2)
+        json.dump(metrics_slim, f, ensure_ascii=False, indent=2)
     print("[OK] Evaluation metrics saved to", out)
 
 

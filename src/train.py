@@ -54,7 +54,6 @@ def _build_model(cfg):
         )
     if name == "lightgbm":
         from lightgbm import LGBMClassifier
-        # приглушить болтовню, если не задано
         params.setdefault("verbosity", -1)
         return LGBMClassifier(**params)
     if name == "catboost":
@@ -82,25 +81,10 @@ def main():
     run_dir = os.path.join(artifacts, "runs", run_id)
     os.makedirs(run_dir, exist_ok=True)
 
-    # сохранить копию конфига в папку запуска
     try:
         shutil.copy2(args.config, os.path.join(run_dir, os.path.basename(args.config)))
     except Exception:
         pass
-
-    def _cfg_hash(d):
-        s = json.dumps(d, sort_keys=True, ensure_ascii=False)
-        return hashlib.sha256(s.encode("utf-8")).hexdigest()[:12]
-
-    def _git_rev():
-        try:
-            return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
-        except Exception:
-            return "no-git"
-
-    rev = _git_rev()
-    cfg_hash = _cfg_hash(cfg)
-    # ─────────────────────────────────────────────────────────────────────────
 
     # данные
     X, y = read_dataset(cfg["data"]["path_train"], cfg["data"]["target"])
@@ -121,7 +105,6 @@ def main():
     oof_cal = np.zeros(len(X), dtype=float) if has_cal else None
 
     for tr_idx, va_idx in cv.split(X, y, groups):
-        # на каждый фолд — свежие клоны препроцессора и модели
         pipe = Pipeline([("pre", clone(preprocessor)), ("model", clone(base_model))])
         pipe.fit(X.iloc[tr_idx], y.iloc[tr_idx])
 
@@ -140,7 +123,7 @@ def main():
 
     use_pred = oof_cal if has_cal else oof_raw
 
-    # выбор порога
+    # выбор порога (по OOF предиктам после калибровки, если она есть)
     sel = select_threshold(
         y_val=y.values,
         p_val=use_pred,
@@ -187,26 +170,21 @@ def main():
         os.path.join(run_dir, "model.pkl"),
     )
 
-    payload = {
-        "selection": sel,
-        "oof_raw": metrics_raw,
-        "oof_calibrated": metrics_cal,
-        "used_calibration": (method if has_cal else "none"),
-        "threshold": threshold,
-        "run_id": run_id,
-        "git_commit": rev,
-        "config_hash": cfg_hash,
-        "env": {
-            "python": sys.version.split()[0],
-            "numpy": np.__version__,
-            "sklearn": __import__("sklearn").__version__,
-            "platform": platform.platform(),
-        },
-    }
-    with open(os.path.join(run_dir, "metrics.json"), "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
+    # строим «ужатые» отчёты
+    def _slim(md):
+        return {k: md[k] for k in ("roc_auc", "pr_auc", "logloss", "f1", "fbeta", "cm")}
 
-    # симлинк artifacts/latest -> текущий ран (если поддерживается ОС)
+    report_before = {**_slim(metrics_raw), "threshold": threshold, "calibration": "before"}
+    metrics_out = {"before": report_before}
+
+    if has_cal and metrics_cal is not None:
+        report_after = {**_slim(metrics_cal), "threshold": threshold, "calibration": "after"}
+        metrics_out["after"] = report_after
+
+    with open(os.path.join(run_dir, "metrics.json"), "w", encoding="utf-8") as f:
+        json.dump(metrics_out, f, ensure_ascii=False, indent=2)
+
+    # симлинк artifacts/latest -> текущий ран
     latest = os.path.join(artifacts, "latest")
     try:
         if os.path.islink(latest) or os.path.exists(latest):

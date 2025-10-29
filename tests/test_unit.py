@@ -49,14 +49,14 @@ def test_metrics_keys_and_strategies():
     for k in ("roc_auc", "pr_auc", "logloss", "f1", "fbeta", "cm"):
         assert k in m
 
-    # cost: минимизация стоимости (поддерживаем обе схемы ключей)
+    # cost: минимизация стоимости (поддерживаем обе схемы ключей из реализации)
     sel_c = select_threshold(y_val=y, p_val=p, strategy="cost", cost_matrix={"fp": 1.0, "fn": 5.0})
     assert 0.0 <= sel_c["threshold"] <= 1.0
     assert ("value" in sel_c) or ("cost_at_threshold" in sel_c)
 
 def test_basic_calibration_monotone_and_bounded():
     """
-    Проверяем калибровку без deprecated cv='prefit':
+    Калибровка без deprecated cv='prefit':
     - вероятности в [0, 1]
     - высокая ранговая корреляция с базовым score (монотонность в среднем)
     """
